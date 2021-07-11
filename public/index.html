@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link rel="icon" href="<%= BASE_URL %>favicon_3.png">
+    <title><%= htmlWebpackPlugin.options.title %></title>
+    <!--vuetify引入了谷歌字体，这里注掉了-->
+    <!--link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900"-->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@latest/css/materialdesignicons.min.css">
+    <!--这里是一个应该没有用的引入，总是失败，注掉了-->
+    <!--script src="http://api.map.baidu.com/api?v=3.0&ak=9bwYiUra4Y4jST7rVTBNPaOmOLaUu90L"></script-->
+    <!-- <script type="text/javascript" src="/static/zones.json"></script> -->
+
+    <!--以下代码全局引入minemap-->
+    <script type="text/javascript" src="//minedata.cn/minemapapi/v2.1.0/minemap.js"></script>
+    <link rel="stylesheet" href="https://minedata.cn/minemapapi/v2.1.0/minemap.css">
+
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app"></div>
+    <!-- built files will be auto injected -->
+  </body>
+  <script type="text/javascript">
+    //下面这个函数是从https://www.jianshu.com/p/fbe783ecb227抄来的，用于响应式地修改rem的数值
+    !function(n){
+      let e = n.document;
+      let t = e.documentElement;
+      let i = 1080;
+      let d = i / 8;
+      let o = "orientationchange" in n ? "orientationchange" : "resize";
+      let a = function () {
+        let n = t.clientWidth || 1080;
+        //n > 720 && (n = 720);
+        t.style.fontSize = n / d + "px";
+        console.log(n / d + "px");
+      };
+      e.addEventListener&&(n.addEventListener(o,a,!1),e.addEventListener("DOMContentLoaded",a,!1))
+    }(window);
+  </script>
+  <script type="text/javascript">
+      //以下代码为minemap做全局配置
+      minemap.domainUrl = "//minedata.cn";
+      minemap.dataDomainUrl = "//datahive.minedata.cn";
+      minemap.serverDomainUrl = "//datahive.minedata.cn";
+      minemap.spriteUrl = "//minedata.cn/minemapapi/v2.1.0/sprite/sprite";
+      minemap.serviceUrl = "//mineservice.minedata.cn/service/";
+      minemap.key = "25cc55a69ea7422182d00d6b7c0ffa93";
+      minemap.solution = 12877;
+
+      window.minemap = minemap;
+  </script>
+</html>

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>交通事件预测</title>
+  <link rel="stylesheet" href="https://minedata.cn/api/static/demo/js-api/zh/css/demo.css">
+  <!-- 引入MineMap API插件 -->
+  <link rel="stylesheet" href="https://minedata.cn/minemapapi/v2.1.0/minemap.css">
+
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="https://minedata.cn/minemapapi/v2.1.0/minemap.js"></script>
+  <script src="https://minedata.cn/minemapapi/v2.1.0/plugins/echarts/echarts.3.8.5.min.js"></script>
+  <script src="https://minedata.cn/minemapapi/v2.1.0/plugins/template/template.js"></script>
+  <script src="https://cdn.staticfile.org/vue-resource/1.5.1/vue-resource.min.js"></script>
+  <script>
+    Vue.use(VueResource);
+    Vue.http.interceptors.push((request,next)=>{
+      request.credentials = true;
+      request.url = '/api'+request.url;
+      console.log(request.url);
+      next((response) => {//在响应之后传给then之前对response进行修改和逻辑判断。对于token时候已过期的判断，就添加在此处，页面中任何一次http请求都会先调用此处方法
+    
+        if(response.status===401){
+    
+          console.log('response.body:',response.body);
+          window.location.reload();
+        }
+        return response;
+    
+    
+      });
+    
+    
+    })</script>
+
+  <style>
+    .minemap-ctrl-logo {
+      display: none !important;
+    }
+
+    #map,
+    #app {
+      width: 100%;
+      height: 100%;
+    }
+
+    .toolDiv-red {
+      background: url("./tooltip-red.png") no-repeat;
+      background-size: cover;
+      height: 300px;
+      width: 180px;
+      text-align: center;
+      color: #c69292;
+      padding-top: 30px;
+    }
+
+    .toolDiv-yellow {
+      background: url("./tooltip-yellow.png") no-repeat;
+      background-size: cover;
+      height: 300px;
+      width: 180px;
+      text-align: center;
+      color: #cfb980;
+      padding-top: 30px;
+    }
+
+    .toolDiv-green {
+      background: url("./tooltip-green.png") no-repeat;
+      background-size: cover;
+      height: 300px;
+      width: 180px;
+      text-align: center;
+      color: #aeffbe;
+      padding-top: 30px;
+    }
+
+    .el-drawer {
+      background-color: rgba(50, 50, 50, 0.4) !important;
+    }
+
+    .el-table th,
+    .el-table tr {
+      background-color: rgba(0, 0, 0, 0);
+    }
+
+    .el-table td,
+    .el-table th {
+      text-align: center;
+    }
+
+    .el-table {
+      width: 80%;
+      margin: 0 auto;
+    }
+
+    .el-table thead {
+      color: #79cbe0;
+    }
+
+    .el-table {
+      color: #cccccc;
+    }
+
+    .el-table--enable-row-hover .el-table__body tr:hover>td {
+      background-color: rgba(0, 167, 210, 0.8);
+    }
+
+    .el-table,
+    .el-table__expanded-cell {
+      background-color: rgba(0, 0, 0, 0);
+    }
+
+    #drawer-form {
+      background-color: rgba(0, 0, 0, 0);
+      text-align: center;
+    }
+
+    #drawer-button {
+      position: fixed;
+      right: 10px;
+      bottom: 10px;
+      background-color: rgba(0, 167, 210, 0.8);
+    }
+
+    .dateArea {
+      background-color: rgba(0, 0, 0, 0);
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+    }
+
+    .el-input__inner {
+      background-color: rgba(0, 0, 0, 0);
+      color: #00cbff;
+    }
+
+    .date {
+      display: inline-block;
+      margin: 0 5px;
+    }
+
+    .el-picker-panel {
+      color: #e4e7ed !important;
+      background-color: rgba(0, 0, 0, 0.5) !important;
+    }
+
+    .el-date-picker__header-label,
+    .el-picker-panel__icon-btn {
+      color: #e4e7ed !important;
+    }
+
+    .el-input__icon {
+      line-height: 29px;
+    }
+
+    .tit {
+      position: fixed;
+      top: 10px;
+      left: 20px;
+      font-size: 30px;
+      color: #00CBFF;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <div id="map" onclick="handleClickMap()"></div>
+    <!-- <el-button @click="drawer=true" id="drawer-button" type="primary" icon="el-icon-edit" circle></el-button> -->
+    <!-- <div class="tit">
+      <b>
+        交通事件预测
+      </b>
+    </div> -->
+    <!-- div class="dateArea">
+      <div class="date">
+        <el-date-picker type="date" v-model="dataStart" placeholder="选择开始日期"></el-date-picker>
+      </div>
+      <span style="color:#00CBFF">-</span>
+      <div class="date">
+        <el-date-picker type="date" v-model="dataEnd" placeholder="选择结束日期"></el-date-picker>
+      </div>
+    </div-->
+    <!-- <el-drawer :visible.sync="drawer" :direction="direction">
+      <el-form :inline="true" :model="formInline" class="demo-form-inline">
+        <div id="drawer-form">
+          <el-form-item>
+            <el-input placeholder="请输入合约名"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" style="background-color:rgba(0, 167, 210, 0.8);">执行</el-button>
+          </el-form-item>
+        </div>
+      </el-form>
+      <div id="drawer-table">
+        <el-table :data="data" style>
+          <el-table-column prop="value[0]" label="经度" width="100"></el-table-column>
+          <el-table-column prop="value[1]" label="纬度" width="100"></el-table-column>
+          <el-table-column prop="danger" label="严重程度"></el-table-column>
+        </el-table>
+      </div>
+    </el-drawer> -->
+  </div>
+  <script>
+    var pointData = [
+      { value: [103.6075, 31.0079], danger: 1 }
+      , { value: [116.3971, 39.9172], danger: 2 }
+      , { value: [116.4106, 39.8812], danger: 4 }
+      , { value: [116.2719, 39.99], danger: 5 }
+      , { value: [116.0198, 40.36], danger: 7 }
+      , { value: [116.3947, 39.9952], danger: 8 }
+      , { value: [116.2235, 40.3230], danger: 9 }
+    ];
+
+    /**
+     * 全局参数设置
+     */
+    var vm = new Vue({
+      el: '#app',
+      data: function () {
+        return {
+          visible: false,
+          drawer: false,
+          direction: "rtl",
+
+          dataStart: "",
+          dataEnd: "",
+
+          formInline: {
+            searchApp: ""
+          },
+
+          dateStart: "",
+          dateEnd: "",
+          data: [],
+          id: 0,
+        }
+      },
+      mounted: function () {
+        // console.log(document.cookie);
+        this.data = pointData
+
+      },
+      methods: {
+        mapInit: function () {
+          // 增加自定义数据源、自定义图层
+          var data = pointData;
+
+          var series = getSeries(data);
+          var option = getOption(series);
+
+          /**
+           * 创建一个echartslayer，并调用echartslayer.chart.setOption 这个charts就是echarts.init 返回的实例
+           */
+          var echartslayer = minemap.Template.create({ map: map, type: 'od' });
+          echartslayer.chart.setOption(option);
+          let that = this;
+          // function getData() {
+          //   //const http = new Vue();
+          //   Vue.http.get('/view/contract/contractidbyname?contractname=DSTGCN').then(res => {
+          //     console.log(res);
+          //     if (res.body.successFlag === true) {
+          //       that.id = res.body.data;
+          //       Vue.http.post(`/view/contract/result/online?contract_id=${that.id}`, {},{ credentials: true }).then(res2 => {
+          //         if (res2.body.successFlag === true) {
+          //           data = [];
+          //           var i = 0;
+          //           for (i = 0; i < res2.body.data.length; i++) {
+          //             if (res2.data[i].dataSubType === 17 && res2.body.data[i].status === 1) {
+          //               var j = 0;
+          //               for (j = 0; j < res2.body.data[i].bodyMessage.length; j++) {
+          //                 var v = [0.0, 0.0];
+          //                 var st = "";
+          //                 var et = "";
+          //                 var dg = 0;
+          //                 v[0] = res2.data[i].body.bodyMessage[j].longitude;
+          //                 v[1] = res2.data[i].body.bodyMessage[j].latitude;
+          //                 st = res2.data[i].body.bodyMessage[j].startTime;
+          //                 et = res2.data[i].body.bodyMessage[j].endTime;
+          //                 dg = res2.data[i].body.bodyMessage[j].danger;
+          //                 that.data.push({
+          //                   value: v,
+          //                   startTime: st,
+          //                   endTime: et,
+          //                   danger: dg
+          //                 })
+          //               }
+          //             }
+          //           }
+          //         }
+          //       })
+          //     }
+          //   })
+          //   series = getSeries(data)
+          //   option = getOption(series)
+          // }
+          // setInterval(getData, 2000);
+
+          for(let i = 0, len = pointData.length; i < len; i++) {
+            this.generatePolygonLists(pointData[i].value[0],pointData[i].value[1],pointData[i].danger);
+          }
+
+          map.addSource("lineSource", {
+            "type": "geojson",
+            "data": {
+              "type": "FeatureCollection",
+              "features": []
+            }
+          });
+
+          map.addLayer({
+            "id": "lines",
+            "type": "line",
+            "source": "lineSource",
+            "layout": {
+              "line-join": "round",
+              "line-cap": "round"
+            },
+            "paint": {
+              "line-color": "#ff0000",
+              "line-width": 3
+            }
+          });
+        },
+
+        generatePolygonLists(centerLon, centerLat /*中心点坐标*/,scale) {
+          scale = 1 + ((scale - 1) / 10) * 2;
+          const CONFIG = [[0.005 * scale,'red',200],[0.01 * scale,'yellow',200],[0.02 * scale,'gray',200],[0.001 * scale, 'red',500]];
+          for(let i = 0; i < 4; i++) {
+            //随机在每个象限生成3个方向角
+            let directions = [];
+            for(let j = 1; j <= 3; j++) directions.push(Math.random()/2);
+            for(let j = 1; j <= 3; j++) directions.push(Math.random()/2 + 0.5);
+            for(let j = 1; j <= 3; j++) directions.push(Math.random()/2 + 1);
+            for(let j = 1; j <= 3; j++) directions.push(Math.random()/2 + 1.5);
+            directions.sort();
+            // console.log(directions);
+
+            //按基准长度随机给每个方向角生成一个长度
+            let lengths = [];
+            for(let j = 0; j < 12; j++) {
+              lengths.push((Math.random() / CONFIG[i][2]) + CONFIG[i][0]);
+            }
+            // console.log(lengths);
+
+            //将方向角、中心点和长度转换生成12个点的直角坐标
+            let coords = [];
+            for(let j = 0; j < 12; j++) {
+              coords.push([lengths[j] * Math.cos(Math.PI * directions[j]) + centerLon, lengths[j] * Math.sin(Math.PI * directions[j]) + centerLat]);
+            }
+            // console.log(coords);
+
+            //将多边形渲染到地图上
+            map.addSource('maine' + centerLon.toString() + centerLat.toString() + i.toString(), {       /* 添加Source，类型是geojson */
+              'type': 'geojson',
+              'data': {                  /* geojson数据 */
+                'type': 'Feature',
+                'geometry': {
+                  'type': 'Polygon',
+                  'coordinates': [coords]
+                }
+              }
+            });
+            map.addLayer({
+              "id": "polygonLayer" + centerLon.toString() + centerLat.toString() + i.toString(),
+              "type": "fill",
+              "source": "maine" + centerLon.toString() + centerLat.toString() + i.toString(),
+              "layout": {},
+              "paint": {
+                "fill-color": CONFIG[i][1],
+                "fill-opacity": 0.2
+              }
+            });
+          }
+        }
+      }
+    });
+
+    minemap.domainUrl = 'http://minedata.cn';
+    minemap.dataDomainUrl = 'http://datahive.minedata.cn';
+    minemap.spriteUrl = 'http://minedata.cn/minemapapi/v2.0.0/sprite/sprite';
+    minemap.serviceUrl = 'http://minedata.cn/service';
+    minemap.accessToken = '25cc55a69ea7422182d00d6b7c0ffa93';
+    minemap.solution = 2365;
+
+    var map = new minemap.Map({
+      container: 'map',
+      style: "http://minedata.cn/service/solu/style/id/12878",
+      center: [116.46, 39.92],
+      minZoom: 5,
+      maxZoom: 17,
+      zoom: 10,
+      pitch: 0
+    });
+
+    /**
+     * 创建地图对象后，开始加载地图资源，地图资源加载完成后触发load事件
+     */
+    map.on('load', vm.mapInit);
+
+    var roadLayerIds = [];
+    minemap.util.getJSON("https://mineservice.minedata.cn/service/solu/style/id/12878", function (error, data) {
+      data.layers.forEach(function (layer) {
+        //判断是否道路线图层
+        if (layer.type == 'line' && (layer.source == 'Merge_1' || layer.source == 'Road') && layer['source-layer'] == 'Road') {
+          roadLayerIds.push(layer.id);
+        }
+      });
+    });
+
+    map.on('mousemove', function (e) {
+      var features = map.queryRenderedFeatures(e.point, {layers: roadLayerIds});
+      map.getCanvas().style.cursor = (features.length > 0) ? 'pointer' : '';
+    });
+
+    map.on('click', function (e) {
+      var p = e.point
+      var center = map.unproject(e.point);
+      console.log(center);
+      map.setCenter([center.lng, center.lat]);
+      map.setZoom(17);
+      var radius = 50 //半径 单位米
+      var boundArray = new minemap.LngLat(center.lng, center.lat).toBounds(radius).toArray();
+      //console.log(clickedCoordinates);
+      var bound1 = map.project(boundArray[0]);
+      var bound2 = map.project(boundArray[1]);
+      var bounds = [[Math.floor(Math.min(bound1.x, bound2.x)), Math.floor(Math.min(bound1.y, bound2.y))], [Math.floor(Math.max(bound1.x, bound2.x)), Math.floor(Math.max(bound1.y, bound2.y))]];
+      var features = map.queryRenderedFeatures(bounds, {layers: roadLayerIds});
+
+      if (features.length < 1) {
+        map.getSource('lineSource').setData({
+          "type": "FeatureCollection",
+          "features": []
+        })
+        return;
+      }
+
+      map.getSource('lineSource').setData({
+        "type": "FeatureCollection",
+        "features": features
+      });
+    });
+
+    function drawer() {
+      data.drawer = true;
+    }
+
+    function getSeries(data) {
+      var scatterData = [];
+
+      var min = Number.MAX_VALUE;
+      var max = Number.MIN_VALUE;
+
+      for (var i = 0; i < data.length; i++) {
+        var item = data[i];
+        scatterData.push({
+          value: item.value,
+          danger: item.danger
+        });
+
+      }
+
+      var getColor = function (param) {
+        return 'rgba(255,245,72,' + (param.data.danger * 0.07 + 0.37) + ')';
+      };
+
+      return [{
+        name: 'scatter',
+        type: 'effectScatter',
+        coordinateSystem: 'GLMap',
+        zlevel: 2,
+        rippleEffect: {
+          scale: 10,
+          brushType: 'stroke'
+        },
+        data: scatterData,
+        label: {
+          normal: {
+            show: true,
+            position: 'right',
+            formatter: '{b}'
+          }
+        },
+        symbolSize: 10,
+        itemStyle: {
+          normal: {
+            show: true,
+            color: getColor
+          }
+        },
+      },
+      ];
+    }
+
+    /*
+    let clickedCoordinates = [];
+    function handleClickMap() {
+      console.log('map clicked!');
+      map.setCenter(clickedCoordinates);
+      map.setZoom(17);
+    }
+     */
+
+    function getOption(series) {
+      return {
+        GLMap: {
+          roam: true
+        },
+
+        tooltip: {
+          trigger: "item",
+          position: "top",
+          backgroundColor: "rgba(50, 50, 50, 0.8)",
+          formatter: function (params) {
+            //console.log(params);
+            //clickedCoordinates = params.value;
+            //console.log(clickedCoordinates);
+            // var cl = "toolDiv-red";
+            // if (params.data.danger <= 6 && params.data.danger >= 4) {
+            //   cl = "toolDiv-yellow";
+            // } else if (params.data.danger <= 3 && params.data.danger >= 1) {
+            //   cl = "toolDiv-green";
+            // }
+            return (
+              '<div>' +
+              "<p>经度：" +
+              params.value[0] +
+              "</p>" +
+              "<p>纬度：" +
+              params.value[1] +
+              "</p>" +
+              "<p>数据规模：" +
+              params.data.danger +
+              "</p>"
+              //  +
+              // '<div class="bg-img"></div><div>'
+            );
+          }
+        },
+        series: series
+      };
+    }
+
+  </script>
+</body>
