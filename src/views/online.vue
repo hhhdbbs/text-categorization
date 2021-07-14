@@ -54,7 +54,7 @@
                                                 </svg>
                                             </v-list-item-icon>
                                             <v-list-item-content>
-                                                <v-list-item-title v-text="item.name" style="font-weight:700;font-size:16px"></v-list-item-title>
+                                                <v-list-item-title v-text="item.tag" style="font-weight:700;font-size:16px"></v-list-item-title>
                                                 <v-list-item-content><p>score:<span style="font-weight:700;font-size:15px;margin-left:10px">{{item.score}}</span></p></v-list-item-content>
                                             </v-list-item-content>
                                             
@@ -202,7 +202,7 @@ export default {
             this.$axios.post("http://localhost:8080/single",data).
          then(res => {
         if (res.status === 200) {
-            this.item=res.data.tag
+            this.item=res.data.tag.slice(0,10)
         }
          })
         },
