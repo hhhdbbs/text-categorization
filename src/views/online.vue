@@ -139,7 +139,7 @@
 
       <v-stepper-content step="2">
         <span style="font-size:25px;line-height:40px;font-weight:700">下载文件：</span>
-        <a :href={fildDownload} download="识别结果.xlsx"  style="font-size:25px;line-height:40px;font-weight:700">识别结果</a>
+        <a :href={fildDownload}  style="font-size:25px;line-height:40px;font-weight:700">识别结果</a>
         <v-card-actions>
             <v-btn
           color="primary"
