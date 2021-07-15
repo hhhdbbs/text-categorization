@@ -1,6 +1,5 @@
 <template>
-    <div class="back" style="height:100%">
-    <v-container>
+    <div class="back" style="height:100%;padding:2% 4%">
         <v-row>
             <v-col cols="2"> 
                 <v-tabs background-color="rgb(53,60,114)" dark vertical grow slider-size="5"  style="border-radius:6px;overflow:hidden">
@@ -82,7 +81,7 @@
                                     </v-card-actions>
                                     </v-card>
                                 </v-dialog>
-                                <v-btn tile large color="rgb(51,61,113)" dark style="font-size:16px;font-weight:700;margin-right:30px" shaped @click="one">识别</v-btn>
+                                <v-btn tile :loading="loading" large color="rgb(51,61,113)" dark style="font-size:16px;font-weight:700;margin-right:30px" shaped @click="one">识别</v-btn>
                             </v-col>
                         </v-row>
                     </v-card-actions>
@@ -128,7 +127,7 @@
       <v-card-actions class="d-flex justify-end">
       <v-btn
           tile large color="rgb(51,61,113)" dark style="font-size:16px;font-weight:700;margin-right:30px"
-          @click="upload"
+          @click="upload" :loading="loading"
         >
           识别文件
         </v-btn>
@@ -139,11 +138,11 @@
 
       <v-stepper-content step="2">
         <span style="font-size:25px;line-height:40px;font-weight:700">下载文件：</span>
-        <a :href={fildDownload}  style="font-size:25px;line-height:40px;font-weight:700">识别结果</a>
+        <a href='http://localhost:8080/download/out.xlsx'  style="font-size:25px;line-height:40px;font-weight:700">识别结果</a>
         <v-card-actions>
             <v-btn
           color="primary"
-          @click="e1 = 2"
+          @click="e1 = 1"
         >
           重新识别
         </v-btn>
@@ -160,7 +159,6 @@
                 </v-window>
             </v-col>
         </v-row>           
-      </v-container>
     </div>
 </template>
 <script>
@@ -168,6 +166,7 @@ export default {
     name:"online",
     data(){
         return{
+            loading:false,
             name:"",
             title:"",
             text:"",
@@ -196,14 +195,22 @@ export default {
     },
     methods:{
         one(){
+            this.loading=true
             var data=new FormData()
             data.append('title',this.title)
             data.append('text',this.text)
             this.$axios.post("http://localhost:8080/single",data).
          then(res => {
-        if (res.status === 200) {
-            this.item=res.data.tag.slice(0,10)
+            console.log(res)
+        if (res.status == 200) {
+        console.log(res)
+            this.items=res.data.tag.slice(0,10)
+            console.log(this.items)
+            this.loading=false
         }
+         }).catch(()=>{
+             alert("识别异常，请检查环境")
+             this.loading=false
          })
         },
         getColor(index){
@@ -218,15 +225,23 @@ export default {
             }
             var data=new FormData()
             data.append('file',this.file)
+            this.loading=true
             var url=this.type==1?"http://localhost:8080/uploadxslx":"http://localhost:8080/upload"
          this.$axios.post(url,data).
          then(res => {
-        if (res.status === 200) {
-            this.fileDownload = res.data.file
+         console.log(res)
+        if (res.status == 200) {
+this.loading=false
+            this.fileDownload = res.data
+            console.log(this.fileDownload )
           this.e1=2
         this.dis=true
         }
-         })},
+         }).catch(()=>{
+             alert("识别异常，请检查环境")
+             this.loading=false
+         })
+         },
         uploadFile(params) {
          console.log(params)
       let file = params.file;
